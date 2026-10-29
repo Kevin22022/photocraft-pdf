@@ -70,6 +70,7 @@ pub mod raw;
 pub mod slices_map;
 pub mod smart_map;
 pub mod svg;
+mod pdf_import;
 mod text_import;
 pub mod text_styles_map;
 pub mod tiff_layers;
@@ -498,6 +499,11 @@ fn import_stages(name: &str, bytes: &[u8], ctl: &photocraft_raster::Interrupt, o
     // `codec: unrecognized image format` (#5258). Magic already returned above.
     if is_psd_input(name, bytes) {
         return import_psd(name, ctl, damaged, |want, recover| PsdFile::from_bytes_and_merged_recovering(bytes, want, recover));
+    }
+    if bytes.starts_with(b"%PDF") || has_extension(name, "pdf") {
+        let png = pdf_import::first_page_png(bytes, 3.0)?;
+        let png_name = std::path::Path::new(name).with_extension("png").to_string_lossy().into_owned();
+        return flat::import_flat(&png_name, &png);
     }
     flat::import_flat(name, bytes)
 }
